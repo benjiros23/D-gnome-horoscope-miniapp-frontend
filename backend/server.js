@@ -16,11 +16,13 @@ const cache = new NodeCache({ stdTTL: 14400 });
 // Middleware как было раньше...
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-frontend-app.netlify.app', 'https://web.telegram.org']
-        : ['http://localhost:3000', 'https://web.telegram.org'],
+    origin: [
+        'https://d-gnome-horoscope-miniapp-frontend.vercel.app',
+        'https://web.telegram.org'
+    ],
     credentials: true
 }));
+
 app.use(express.json({ limit: '10mb' }));
 
 const limiter = rateLimit({
@@ -313,3 +315,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
