@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-const PORT = process.env.PORT || 10000;
 
+const app = express();
+const PORT = process.env.PORT || 10000;
 // Настройка CORS
 app.use(cors({
   origin: [
@@ -610,4 +611,5 @@ app.listen(PORT, () => {
   console.log(`🧙‍♂️ Сервер запущен на порту ${PORT}`);
   console.log(`Node.js версия: ${process.version}`);
 });
+
 
