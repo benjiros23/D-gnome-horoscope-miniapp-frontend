@@ -269,17 +269,26 @@ app.get('/api/advice', (req, res) => {
 // Лунный календарь
 app.get('/api/moon', (req, res) => {
   try {
-    // Выбираем текущую фазу
-    const currentPhase = getRandomItem(moonPhases);
-    
-    // Генерируем календарь на неделю
-    const calendar = [];
+    // Получаем "семя" на основе текущей даты для стабильности
     const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // "2025-08-25"
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    
+    // Детерминированный выбор фазы на основе дня года
+    const phaseIndex = dayOfYear % moonPhases.length;
+    const currentPhase = moonPhases[phaseIndex];
+    
+    // Стабильные данные для всего дня
+    const baseNumber = dayOfYear * 7; // Используем день года как базу
+    
+    // Генерируем календарь на неделю (стабильно для этого дня)
+    const calendar = [];
     
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      const randomPhase = getRandomItem(moonPhases);
+      const dayNum = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+      const phaseIdx = dayNum % moonPhases.length;
       
       calendar.push({
         date: date.toISOString(),
@@ -288,8 +297,8 @@ app.get('/api/moon', (req, res) => {
           day: 'numeric', 
           month: 'short' 
         }),
-        ...randomPhase,
-        age: Math.floor(Math.random() * 29) + 1
+        ...moonPhases[phaseIdx],
+        age: (dayNum % 29) + 1 // Стабильный возраст луны
       });
     }
     
@@ -347,17 +356,20 @@ app.get('/api/moon', (req, res) => {
     
     const advice = adviceMap[currentPhase.phase] || adviceMap['Новолуние'];
     
-    // Следующие важные фазы
+    // Стабильные следующие фазы (детерминированно на основе даты)
+    const nextFullMoonDays = 15 - (dayOfYear % 15);
+    const nextNewMoonDays = 30 - (dayOfYear % 30);
+    
     const nextFullMoon = new Date(today);
-    nextFullMoon.setDate(today.getDate() + Math.floor(Math.random() * 15) + 5);
+    nextFullMoon.setDate(today.getDate() + nextFullMoonDays);
     
     const nextNewMoon = new Date(today);
-    nextNewMoon.setDate(today.getDate() + Math.floor(Math.random() * 15) + 20);
+    nextNewMoon.setDate(today.getDate() + nextNewMoonDays);
     
     res.json({
       current: {
         ...currentPhase,
-        age: Math.floor(Math.random() * 29) + 1,
+        age: (dayOfYear % 29) + 1,
         date: today.toISOString(),
         advice
       },
@@ -366,7 +378,8 @@ app.get('/api/moon', (req, res) => {
       moonset: '19:30',
       nextFullMoon: nextFullMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
       nextNewMoon: nextNewMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
-      source: 'internet'
+      source: 'internet',
+      cached_until: `${dateString}T23:59:59.999Z` // Показываем до когда актуальны данные
     });
     
   } catch (error) {
@@ -377,6 +390,7 @@ app.get('/api/moon', (req, res) => {
     });
   }
 });
+
 
 // Нумерология
 app.post('/api/numerology', (req, res) => {
@@ -569,3 +583,4 @@ process.on('SIGTERM', () => {
   console.log('\n🛑 Получен сигнал SIGTERM. Завершаем работу сервера...');
   process.exit(0);
 });
+
