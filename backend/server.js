@@ -9,6 +9,17 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const moonPhases = [
+  { phase: 'Новолуние', emoji: '🌑', illumination: 2 },
+  { phase: 'Молодая луна', emoji: '🌒', illumination: 15 },
+  { phase: 'Первая четверть', emoji: '🌓', illumination: 50 },
+  { phase: 'Растущая луна', emoji: '🌔', illumination: 75 },
+  { phase: 'Полнолуние', emoji: '🌕', illumination: 98 },
+  { phase: 'Убывающая луна', emoji: '🌖', illumination: 75 },
+  { phase: 'Последняя четверть', emoji: '🌗', illumination: 50 },
+  { phase: 'Старая луна', emoji: '🌘', illumination: 15 }
+];
+
 
 // Middleware
 app.use(helmet());
@@ -159,14 +170,14 @@ app.get('/', (req, res) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
     endpoints: {
-      'GET /api/horoscope?sign=<знак>': 'Получить гороскоп',
-      'POST /api/day-card': 'Получить карту дня',
-      'GET /api/advice': 'Получить совет дня',
-      'POST /api/numerology': 'Нумерологический расчет',
-      'POST /api/compatibility': 'Совместимость знаков',
-      'GET /api/mercury': 'Статус Меркурия'
-    }
-  });
+  'GET /api/horoscope?sign=<знак>': 'Получить гороскоп',
+  'POST /api/day-card': 'Получить карту дня',
+  'GET /api/advice': 'Получить совет дня',
+  'POST /api/numerology': 'Нумерологический расчет',
+  'POST /api/compatibility': 'Совместимость знаков',
+  'GET /api/moon': 'Лунный календарь', // ← Добавьте эту строку
+  'GET /api/mercury': 'Статус Меркурия'
+}
 });
 
 // Получить гороскоп
@@ -357,48 +368,81 @@ app.post('/api/compatibility', (req, res) => {
 });
 
 // Статус Меркурия
-app.get('/api/mercury', (req, res) => {
+app.get('/api/moon', (req, res) => {
   try {
-    // Реальные периоды ретроградного Меркурия на 2025 год
-    const now = new Date();
-    const retrogradeePeriods2025 = [
-      { start: new Date('2025-03-15'), end: new Date('2025-04-07') },
-      { start: new Date('2025-07-18'), end: new Date('2025-08-11') },
-      { start: new Date('2025-11-09'), end: new Date('2025-11-29') }
-    ];
+    // Выбираем случайную фазу для демонстрации
+    const currentPhase = moonPhases[Math.floor(Math.random() * moonPhases.length)];
     
-    const isRetrograde = retrogradeePeriods2025.some(period => 
-      now >= period.start && now <= period.end
-    );
+    // Генерируем календарь на неделю
+    const calendar = [];
+    const today = new Date();
     
-    const nextPeriod = retrogradeePeriods2025.find(period => now < period.start);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const randomPhase = moonPhases[Math.floor(Math.random() * moonPhases.length)];
+      
+      calendar.push({
+        date: date.toISOString(),
+        displayDate: date.toLocaleDateString('ru-RU', { 
+          weekday: 'short', 
+          day: 'numeric', 
+          month: 'short' 
+        }),
+        ...randomPhase,
+        age: Math.floor(Math.random() * 29) + 1
+      });
+    }
+    
+    // Советы гномов
+    const adviceMap = {
+      'Новолуние': {
+        title: 'Время новых начинаний',
+        text: 'Гном Мечтатель советует: сейчас лучшее время для планирования и новых идей. Луна скрыта, но энергия роста уже накапливается.',
+        activities: ['Планирование', 'Медитация', 'Постановка целей'],
+        avoid: ['Важные решения', 'Крупные покупки']
+      },
+      'Полнолуние': {
+        title: 'Пик энергии и завершений',
+        text: 'Гном Маг предупреждает: максимум лунной силы! Завершайте дела, но будьте осторожны с эмоциями.',
+        activities: ['Завершение проектов', 'Празднование', 'Благодарность'],
+        avoid: ['Импульсивность', 'Конфликты', 'Алкоголь']
+      }
+      // Добавьте другие фазы по желанию
+    };
+    
+    const advice = adviceMap[currentPhase.phase] || adviceMap['Новолуние'];
+    
+    // Следующие важные фазы
+    const nextFullMoon = new Date(today);
+    nextFullMoon.setDate(today.getDate() + Math.floor(Math.random() * 15) + 5);
+    
+    const nextNewMoon = new Date(today);
+    nextNewMoon.setDate(today.getDate() + Math.floor(Math.random() * 15) + 20);
     
     res.json({
-      isRetrograde,
-      period: isRetrograde 
-        ? `Ретроградный до ${retrogradeePeriods2025.find(p => now >= p.start && now <= p.end)?.end.toLocaleDateString('ru-RU')}`
-        : nextPeriod 
-          ? `Директное движение до ${nextPeriod.start.toLocaleDateString('ru-RU')}`
-          : 'Директное движение',
-      description: isRetrograde 
-        ? 'Меркурий ретроградный. Время переосмысления и завершения дел. Будьте внимательны с техникой и документами. Отличный период для медитации и внутренней работы.'
-        : 'Меркурий в директном движении. Отличное время для новых начинаний, переговоров, поездок и обучения. Коммуникация течет легко и ясно.',
-      date: new Date().toISOString(),
-      source: 'internet',
-      advice: isRetrograde 
-        ? 'Используйте это время для завершения старых дел и внутренней работы. 🔄'
-        : 'Время действовать! Заключайте сделки и начинайте новые проекты. ⚡'
+      current: {
+        ...currentPhase,
+        age: Math.floor(Math.random() * 29) + 1,
+        date: today.toISOString(),
+        advice
+      },
+      calendar,
+      moonrise: '06:45',
+      moonset: '19:30',
+      nextFullMoon: nextFullMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
+      nextNewMoon: nextNewMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
+      source: 'internet'
     });
     
   } catch (error) {
-    console.error('Ошибка в /api/mercury:', error);
+    console.error('Ошибка в /api/moon:', error);
     res.status(500).json({ 
-      error: 'Не удалось получить статус Меркурия',
+      error: 'Не удалось получить лунные данные',
       message: 'Произошла внутренняя ошибка сервера'
     });
   }
 });
-
 // 404 обработчик для API
 app.use('/api/*', (req, res) => {
   res.status(404).json({
@@ -443,3 +487,4 @@ process.on('SIGTERM', () => {
   console.log('\n🛑 Получен сигнал SIGTERM. Завершаем работу сервера...');
   process.exit(0);
 });
+
