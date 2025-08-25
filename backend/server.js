@@ -270,40 +270,28 @@ function getFallbackHoroscope(sign) {
 }
 
 // Обновленный API endpoint для гороскопа
-app.get('/api/horoscope', async (req, res) => {
-    try {
-        const { sign } = req.query;
-        
-        if (!sign || !zodiacMapping[sign]) {
-            return res.status(400).json({ 
-                error: 'Некорректный знак зодиака',
-                supportedSigns: Object.keys(zodiacMapping)
-            });
-        }
-        
-        const horoscope = await getLiveHoroscope(sign);
-        
-        res.json({
-            sign,
-            ...horoscope,
-            date: new Date().toISOString(),
-            type: 'live-horoscope'
-        });
-        
-    } catch (error) {
-        console.error('Ошибка в /api/horoscope:', error);
-        
-        // Возвращаем fallback вместо ошибки
-        const fallback = getFallbackHoroscope(req.query.sign);
-        res.json({
-            sign: req.query.sign,
-            ...fallback,
-            date: new Date().toISOString(),
-            type: 'fallback-horoscope',
-            error: 'Основные источники недоступны'
-        });
-    }
+// Добавьте эту строку в ваш server.js ПОСЛЕ всех других настроек, но ПЕРЕД app.listen()
+
+app.get('/', (req, res) => {
+    res.json({ 
+        message: '🧙‍♂️ Гномий Гороскоп API работает!',
+        version: '1.0.0',
+        status: 'active',
+        node_version: process.version,
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            'GET /api/horoscope?sign=<знак>': 'Получить гороскоп для знака зодиака',
+            'POST /api/day-card': 'Получить карту дня',
+            'GET /api/advice?sign=<знак>': 'Получить совет дня',
+            'POST /api/numerology': 'Нумерологический расчет',
+            'POST /api/compatibility': 'Совместимость знаков',
+            'GET /api/mercury': 'Статус ретроградного Меркурия',
+            'GET /api/health': 'Проверка здоровья API'
+        },
+        supportedSigns: Object.keys(horoscopeTexts || {})
+    });
 });
+
 
 // Остальные endpoints остаются без изменений...
 // (day-card, advice, numerology, compatibility, mercury)
@@ -315,4 +303,5 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
 
