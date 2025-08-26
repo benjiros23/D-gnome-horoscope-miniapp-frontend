@@ -177,7 +177,8 @@ app.get('/', (req, res) => {
       'POST /api/numerology': 'Нумерологический расчет',
       'POST /api/compatibility': 'Совместимость знаков',
       'GET /api/moon': 'Лунный календарь',
-      'GET /api/mercury': 'Статус Меркурия'
+      'GET /api/mercury': 'Статус Меркурия',
+      'GET /api/astro-events': 'Календарь астрособытий'
     }
   });
 });
@@ -271,15 +272,12 @@ app.get('/api/moon', (req, res) => {
   try {
     // Получаем "семя" на основе текущей даты для стабильности
     const today = new Date();
-    const dateString = today.toISOString().split('T')[0]; // "2025-08-25"
+    const dateString = today.toISOString().split('T')[0]; // "2025-08-26"
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
     
     // Детерминированный выбор фазы на основе дня года
     const phaseIndex = dayOfYear % moonPhases.length;
     const currentPhase = moonPhases[phaseIndex];
-    
-    // Стабильные данные для всего дня
-    const baseNumber = dayOfYear * 7; // Используем день года как базу
     
     // Генерируем календарь на неделю (стабильно для этого дня)
     const calendar = [];
@@ -379,7 +377,7 @@ app.get('/api/moon', (req, res) => {
       nextFullMoon: nextFullMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
       nextNewMoon: nextNewMoon.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }),
       source: 'internet',
-      cached_until: `${dateString}T23:59:59.999Z` // Показываем до когда актуальны данные
+      cached_until: `${dateString}T23:59:59.999Z`
     });
     
   } catch (error) {
@@ -390,7 +388,6 @@ app.get('/api/moon', (req, res) => {
     });
   }
 });
-
 
 // Нумерология
 app.post('/api/numerology', (req, res) => {
@@ -495,6 +492,56 @@ app.post('/api/compatibility', (req, res) => {
   }
 });
 
+// Календарь астрособытий
+app.get('/api/astro-events', (req, res) => {
+  try {
+    const today = new Date();
+    const events = [];
+    
+    // Генерируем события на ближайшие 30 дней
+    for (let i = 0; i < 30; i += 3) {
+      const eventDate = new Date(today.getTime() + i * 24 * 60 * 60 * 1000);
+      const eventTypes = ['full_moon', 'new_moon', 'planet_transit', 'eclipse'];
+      const eventTitles = {
+        'full_moon': ['Полнолуние в Рыбах', 'Полнолуние в Деве', 'Полнолуние в Близнецах'],
+        'new_moon': ['Новолуние в Овне', 'Новолуние в Тельце', 'Новолуние в Раке'],
+        'planet_transit': ['Марс в Овне', 'Венера в Тельце', 'Меркурий в Близнецах'],
+        'eclipse': ['Лунное затмение', 'Солнечное затмение', 'Частичное затмение']
+      };
+      const eventDescriptions = {
+        'full_moon': 'Время для завершения дел и эмоциональных откровений',
+        'new_moon': 'Идеальный период для новых начинаний и планирования',
+        'planet_transit': 'Влияние планеты усиливается в этот период',
+        'eclipse': 'Мощные трансформационные энергии'
+      };
+      
+      const type = eventTypes[i % eventTypes.length];
+      const title = getRandomItem(eventTitles[type]);
+      
+      events.push({
+        date: eventDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        title: title,
+        shortText: eventDescriptions[type],
+        type: type,
+        fullDate: eventDate.toISOString()
+      });
+    }
+    
+    res.json({
+      events,
+      source: 'internet',
+      generated_at: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка в /api/astro-events:', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить астрособытия',
+      message: 'Произошла внутренняя ошибка сервера'
+    });
+  }
+});
+
 // Статус Меркурия
 app.get('/api/mercury', (req, res) => {
   try {
@@ -550,7 +597,8 @@ app.use('/api/*', (req, res) => {
       'POST /api/numerology',
       'POST /api/compatibility',
       'GET /api/moon',
-      'GET /api/mercury'
+      'GET /api/mercury',
+      'GET /api/astro-events'
     ]
   });
 });
@@ -583,4 +631,3 @@ process.on('SIGTERM', () => {
   console.log('\n🛑 Получен сигнал SIGTERM. Завершаем работу сервера...');
   process.exit(0);
 });
-
