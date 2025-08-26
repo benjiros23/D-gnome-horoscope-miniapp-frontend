@@ -13,10 +13,12 @@ const PORT = process.env.PORT || 10000;
 // Middleware
 app.use(helmet());
 app.use(compression());
+// В server.js замените CORS настройки на:
 app.use(cors({
   origin: [
     'http://localhost:3000',
     'https://web.telegram.org',
+    'https://frongoro.netlify.app',        // ← ДОБАВЬТЕ ЭТУ СТРОКУ
     'https://d-gnome-horoscope-miniapp-frontend.vercel.app',
     process.env.FRONTEND_URL
   ].filter(Boolean),
