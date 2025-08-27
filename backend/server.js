@@ -21,7 +21,7 @@ app.use(cors({
     'https://web.telegram.org',
     'https://frongoro.netlify.app',
     'https://gnome-horoscope-react-adpc77mzg-benjiros-projects.vercel.app',
-    'gnome-horoscope-react.vercel.app',
+    'https://gnome-horoscope-react.vercel.app',
     'https://d-gnome-horoscope-miniapp-frontend.vercel.app',
     process.env.FRONTEND_URL
   ].filter(Boolean),
@@ -712,6 +712,7 @@ process.on('SIGTERM', () => {
   console.log('\n🛑 Получен сигнал SIGTERM. Завершаем работу сервера...');
   process.exit(0);
 });
+
 
 
 
