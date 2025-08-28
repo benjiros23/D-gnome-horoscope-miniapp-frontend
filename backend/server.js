@@ -4,7 +4,7 @@ import cors from 'cors';
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ИСПРАВЛЕННЫЕ CORS НАСТРОЙКИ
+// CORS настройки
 const allowedOrigins = [
   'https://gnome-horoscope-react.vercel.app',
   'https://gnome-horoscope.vercel.app',
@@ -22,7 +22,7 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.log('🚫 CORS заблокирован для:', origin);
-      callback(null, true);
+      callback(null, true); // Разрешаем все для отладки
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -87,6 +87,45 @@ const GNOME_NAMES = {
   'Рыбы': 'Гном Мечтатель'
 };
 
+// ФУНКЦИЯ генерации гороскопа
+const generateHoroscope = (sign) => {
+  const predictions = [
+    "Сегодня звезды благоволят вашим начинаниям. Доверьтесь интуиции!",
+    "День полон возможностей. Не бойтесь делать первый шаг к своей мечте.",
+    "Гномья мудрость говорит: терпение принесет свои плоды уже очень скоро.",
+    "Энергия дня поможет вам преодолеть любые препятствия на пути к успеху.",
+    "Сегодня особенно важно прислушаться к своему сердцу и довериться судьбе."
+  ];
+  
+  const loveAdvice = [
+    "В любви ждут приятные сюрпризы и романтические встречи",
+    "Время укрепить отношения и показать свои чувства",
+    "Возможно судьбоносное знакомство или возвращение старой любви",
+    "Гармония в паре принесет счастье и взаимопонимание"
+  ];
+  
+  const workAdvice = [
+    "Карьерный рост и новые возможности не за горами",
+    "Ваши таланты будут замечены и по достоинству оценены",
+    "Финансовое благополучие растет благодаря мудрым решениям",
+    "Творческий подход поможет решить все рабочие задачи"
+  ];
+  
+  const healthAdvice = [
+    "Энергия бьет ключом, используйте это время продуктивно",
+    "Позитивный настрой станет лучшим лекарством от всех недугов",
+    "Время заняться спортом и укрепить здоровье",
+    "Правильное питание принесет заметные улучшения"
+  ];
+  
+  return {
+    general: predictions[Math.floor(Math.random() * predictions.length)],
+    love: loveAdvice[Math.floor(Math.random() * loveAdvice.length)],
+    work: workAdvice[Math.floor(Math.random() * workAdvice.length)],
+    health: healthAdvice[Math.floor(Math.random() * healthAdvice.length)]
+  };
+};
+
 // API ENDPOINTS
 app.get('/', (req, res) => {
   res.json({
@@ -97,6 +136,7 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: [
       'GET /api/horoscope/:sign - Гороскоп по знаку',
+      'GET /api/horoscope?sign=знак - Гороскоп (старый формат)',
       'GET /api/moon - Лунный календарь',
       'GET /api/astro-events - Астрособытия',
       'POST /api/numerology - Нумерология',
@@ -107,52 +147,71 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/horoscope/:sign', (req, res) => {
+// ИСПРАВЛЕННЫЙ endpoint гороскопа с поддержкой query параметра
+app.get('/api/horoscope', (req, res) => {
   try {
-    const sign = decodeURIComponent(req.params.sign);
+    const sign = req.query.sign;
+    console.log('Запрос гороскопа (query) для знака:', sign);
     
-    if (!ZODIAC_SIGNS.includes(sign)) {
+    if (!sign) {
+      return res.status(400).json({ 
+        error: 'Требуется параметр sign',
+        example: '/api/horoscope?sign=Лев'
+      });
+    }
+    
+    const decodedSign = decodeURIComponent(sign);
+    
+    if (!ZODIAC_SIGNS.includes(decodedSign)) {
       return res.status(400).json({
         error: 'Неверный знак зодиака',
+        received: decodedSign,
         validSigns: ZODIAC_SIGNS
       });
     }
     
-    const predictions = [
-      "Сегодня звезды благоволят вашим начинаниям. Доверьтесь интуиции!",
-      "День полон возможностей. Не бойтесь делать первый шаг к своей мечте.",
-      "Гномья мудрость говорит: терпение принесет свои плоды уже очень скоро.",
-      "Энергия дня поможет вам преодолеть любые препятствия на пути к успеху.",
-      "Сегодня особенно важно прислушаться к своему сердцу и довериться судьбе."
-    ];
+    const horoscope = generateHoroscope(decodedSign);
     
-    const loveAdvice = [
-      "В любви ждут приятные сюрпризы и романтические встречи",
-      "Время укрепить отношения и показать свои чувства",
-      "Возможно судьбоносное знакомство или возвращение старой любви",
-      "Гармония в паре принесет счастье и взаимопонимание"
-    ];
+    res.json({
+      sign: decodedSign,
+      gnome: GNOME_NAMES[decodedSign],
+      date: new Date().toLocaleDateString('ru-RU'),
+      horoscope: horoscope,
+      luckyNumber: Math.floor(Math.random() * 100) + 1,
+      luckyColor: ['Золотой', 'Изумрудный', 'Сапфировый', 'Рубиновый'][Math.floor(Math.random() * 4)],
+      element: ['Овен', 'Лев', 'Стрелец'].includes(decodedSign) ? 'Огонь' 
+              : ['Телец', 'Дева', 'Козерог'].includes(decodedSign) ? 'Земля'
+              : ['Близнецы', 'Весы', 'Водолей'].includes(decodedSign) ? 'Воздух' : 'Вода',
+      compatibility: ZODIAC_SIGNS[Math.floor(Math.random() * ZODIAC_SIGNS.length)],
+      source: 'gnome_wisdom',
+      format: 'query_parameter',
+      timestamp: new Date().toISOString()
+    });
     
-    const workAdvice = [
-      "Карьерный рост и новые возможности не за горами",
-      "Ваши таланты будут замечены и по достоинству оценены",
-      "Финансовое благополучие растет благодаря мудрым решениям",
-      "Творческий подход поможет решить все рабочие задачи"
-    ];
+  } catch (error) {
+    console.error('Ошибка /api/horoscope (query):', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить гороскоп',
+      message: error.message
+    });
+  }
+});
+
+// Новый endpoint гороскопа с параметром в URL
+app.get('/api/horoscope/:sign', (req, res) => {
+  try {
+    const sign = decodeURIComponent(req.params.sign);
+    console.log('Запрос гороскопа (params) для знака:', sign);
     
-    const healthAdvice = [
-      "Энергия бьет ключом, используйте это время продуктивно",
-      "Позитивный настрой станет лучшим лекарством от всех недугов",
-      "Время заняться спортом и укрепить здоровье",
-      "Правильное питание принесет заметные улучшения"
-    ];
+    if (!ZODIAC_SIGNS.includes(sign)) {
+      return res.status(400).json({
+        error: 'Неверный знак зодиака',
+        received: sign,
+        validSigns: ZODIAC_SIGNS
+      });
+    }
     
-    const horoscope = {
-      general: predictions[Math.floor(Math.random() * predictions.length)],
-      love: loveAdvice[Math.floor(Math.random() * loveAdvice.length)],
-      work: workAdvice[Math.floor(Math.random() * workAdvice.length)],
-      health: healthAdvice[Math.floor(Math.random() * healthAdvice.length)]
-    };
+    const horoscope = generateHoroscope(sign);
     
     res.json({
       sign: sign,
@@ -166,27 +225,18 @@ app.get('/api/horoscope/:sign', (req, res) => {
               : ['Близнецы', 'Весы', 'Водолей'].includes(sign) ? 'Воздух' : 'Вода',
       compatibility: ZODIAC_SIGNS[Math.floor(Math.random() * ZODIAC_SIGNS.length)],
       source: 'gnome_wisdom',
-      cached: false,
+      format: 'url_parameter',
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('Ошибка /api/horoscope:', error);
+    console.error('Ошибка /api/horoscope/:sign:', error);
     res.status(500).json({ 
       error: 'Не удалось получить гороскоп',
-      message: error.message
+      message: error.message,
+      sign: req.params.sign
     });
   }
-});
-
-app.get('/api/horoscope', (req, res) => {
-  const sign = req.query.sign;
-  if (sign) {
-    return app.get('/api/horoscope/:sign')(Object.assign(req, { 
-      params: { sign }
-    }), res);
-  }
-  res.status(400).json({ error: 'Требуется параметр sign' });
 });
 
 app.get('/api/moon', (req, res) => {
@@ -195,7 +245,7 @@ app.get('/api/moon', (req, res) => {
     
     const currentPhase = {
       phase: 'Растущая луна',
-      emoji: '🌔',
+      emoji: '🌔', 
       illumination: 25,
       age: 5,
       date: today.toISOString(),
@@ -250,149 +300,326 @@ app.get('/api/moon', (req, res) => {
 });
 
 app.get('/api/astro-events', (req, res) => {
-  const events = [
-    {
-      date: '2025-08-28',
-      title: 'Соединение Венеры и Марса',
-      description: 'Благоприятный день для любовных дел',
-      type: 'planetary',
-      impact: 'positive'
-    },
-    {
-      date: '2025-08-30', 
-      title: 'Полнолуние в Рыбах',
-      description: 'Время для завершения дел и медитации',
-      type: 'lunar',
-      impact: 'neutral'
-    }
-  ];
-  
-  res.json({
-    events,
-    source: 'astronomy_data',
-    generated_at: new Date().toISOString(),
-    total_events: events.length
-  });
+  try {
+    const events = [
+      {
+        date: '2025-08-28',
+        title: 'Соединение Венеры и Марса',
+        description: 'Благоприятный день для любовных дел и творчества',
+        type: 'planetary',
+        impact: 'positive'
+      },
+      {
+        date: '2025-08-30', 
+        title: 'Полнолуние в Рыбах',
+        description: 'Время для завершения дел и глубокой медитации',
+        type: 'lunar',
+        impact: 'neutral'
+      },
+      {
+        date: '2025-09-02',
+        title: 'Тригон Юпитера и Солнца',
+        description: 'Удачный период для карьерного роста и новых начинаний',
+        type: 'planetary',
+        impact: 'positive'
+      },
+      {
+        date: '2025-09-05',
+        title: 'Противостояние Марса и Сатурна',
+        description: 'Время для терпения и осторожности в решениях',
+        type: 'planetary',
+        impact: 'challenging'
+      }
+    ];
+    
+    res.json({
+      events,
+      source: 'astronomy_data',
+      generated_at: new Date().toISOString(),
+      total_events: events.length,
+      note: 'Актуальные астрономические события на август-сентябрь 2025'
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/astro-events:', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить астрособытия',
+      message: error.message
+    });
+  }
 });
 
 app.post('/api/numerology', (req, res) => {
-  const { birthDate, name } = req.body;
-  
-  if (!birthDate) {
-    return res.status(400).json({
-      error: 'Требуется дата рождения'
+  try {
+    const { birthDate, name } = req.body;
+    
+    if (!birthDate) {
+      return res.status(400).json({
+        error: 'Требуется дата рождения',
+        example: { birthDate: '1990-05-15', name: 'Иван' }
+      });
+    }
+    
+    const dateSum = birthDate.replace(/\D/g, '').split('').reduce((sum, digit) => sum + parseInt(digit), 0);
+    const destinyNumber = dateSum > 9 ? dateSum.toString().split('').reduce((sum, digit) => sum + parseInt(digit), 0) : dateSum;
+    
+    const interpretations = {
+      1: 'Лидер, независимый, инициативный',
+      2: 'Дипломат, миротворец, чувствительный',
+      3: 'Творческий, общительный, оптимистичный',
+      4: 'Практичный, надежный, трудолюбивый',
+      5: 'Свободолюбивый, любознательный',
+      6: 'Заботливый, ответственный, семейный',
+      7: 'Мыслитель, духовный, интуитивный',
+      8: 'Амбициозный, целеустремленный',
+      9: 'Гуманист, щедрый, мудрый'
+    };
+    
+    const luckyNumbers = [destinyNumber];
+    for (let i = 1; i <= 3; i++) {
+      let num = (destinyNumber * i) % 9;
+      if (num === 0) num = 9;
+      if (!luckyNumbers.includes(num)) luckyNumbers.push(num);
+    }
+    
+    res.json({
+      birthDate,
+      name: name || 'Неизвестно',
+      destinyNumber,
+      interpretation: interpretations[destinyNumber] || 'Особенная душа',
+      luckyNumbers: luckyNumbers.slice(0, 3),
+      advice: 'Следуйте своему предназначению и доверьтесь внутренней мудрости!',
+      compatibility: Math.floor(Math.random() * 9) + 1,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/numerology:', error);
+    res.status(500).json({ 
+      error: 'Не удалось рассчитать нумерологию',
+      message: error.message
     });
   }
-  
-  const dateSum = birthDate.replace(/\D/g, '').split('').reduce((sum, digit) => sum + parseInt(digit), 0);
-  const destinyNumber = dateSum > 9 ? dateSum.toString().split('').reduce((sum, digit) => sum + parseInt(digit), 0) : dateSum;
-  
-  const interpretations = {
-    1: 'Лидер, независимый, инициативный',
-    2: 'Дипломат, миротворец, чувствительный',
-    3: 'Творческий, общительный, оптимистичный',
-    4: 'Практичный, надежный, трудолюбивый',
-    5: 'Свободолюбивый, любознательный',
-    6: 'Заботливый, ответственный, семейный',
-    7: 'Мыслитель, духовный, интуитивный',
-    8: 'Амбициозный, целеустремленный',
-    9: 'Гуманист, щедрый, мудрый'
-  };
-  
-  res.json({
-    birthDate,
-    name: name || 'Неизвестно',
-    destinyNumber,
-    interpretation: interpretations[destinyNumber] || 'Особенная душа',
-    advice: 'Следуйте своему предназначению!',
-    timestamp: new Date().toISOString()
-  });
 });
 
 app.get('/api/compatibility/:sign1/:sign2', (req, res) => {
-  const sign1 = decodeURIComponent(req.params.sign1);
-  const sign2 = decodeURIComponent(req.params.sign2);
-  
-  if (!ZODIAC_SIGNS.includes(sign1) || !ZODIAC_SIGNS.includes(sign2)) {
-    return res.status(400).json({
-      error: 'Неверные знаки зодиака',
-      validSigns: ZODIAC_SIGNS
+  try {
+    const sign1 = decodeURIComponent(req.params.sign1);
+    const sign2 = decodeURIComponent(req.params.sign2);
+    
+    if (!ZODIAC_SIGNS.includes(sign1) || !ZODIAC_SIGNS.includes(sign2)) {
+      return res.status(400).json({
+        error: 'Неверные знаки зодиака',
+        received: { sign1, sign2 },
+        validSigns: ZODIAC_SIGNS
+      });
+    }
+    
+    // Более сложная логика совместимости
+    const elementCompatibility = {
+      'Огонь': ['Огонь', 'Воздух'],
+      'Земля': ['Земля', 'Вода'],
+      'Воздух': ['Воздух', 'Огонь'],
+      'Вода': ['Вода', 'Земля']
+    };
+    
+    const getElement = (sign) => {
+      if (['Овен', 'Лев', 'Стрелец'].includes(sign)) return 'Огонь';
+      if (['Телец', 'Дева', 'Козерог'].includes(sign)) return 'Земля';
+      if (['Близнецы', 'Весы', 'Водолей'].includes(sign)) return 'Воздух';
+      return 'Вода';
+    };
+    
+    const element1 = getElement(sign1);
+    const element2 = getElement(sign2);
+    
+    const baseCompatibility = elementCompatibility[element1].includes(element2) ? 75 : 55;
+    const randomModifier = Math.floor(Math.random() * 21) - 10; // от -10 до +10
+    const compatibilityScore = Math.max(30, Math.min(100, baseCompatibility + randomModifier));
+    
+    const descriptions = {
+      high: 'Ваши души созданы друг для друга! Прекрасная гармония во всех сферах жизни.',
+      medium: 'Хорошая совместимость с потенциалом для роста. Работайте над пониманием.',
+      low: 'Сложные отношения, но возможны при взаимном уважении и терпении.'
+    };
+    
+    const level = compatibilityScore >= 75 ? 'high' : compatibilityScore >= 55 ? 'medium' : 'low';
+    
+    res.json({
+      sign1,
+      sign2,
+      gnome1: GNOME_NAMES[sign1],
+      gnome2: GNOME_NAMES[sign2],
+      element1,
+      element2,
+      compatibilityScore,
+      level,
+      description: descriptions[level],
+      strongPoints: ['Взаимное притяжение', 'Общие цели', 'Эмоциональная связь'],
+      challenges: ['Различия в темпераменте', 'Разные потребности в общении'],
+      advice: 'Цените различия друг друга и не забывайте о компромиссах!',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/compatibility:', error);
+    res.status(500).json({ 
+      error: 'Не удалось рассчитать совместимость',
+      message: error.message
     });
   }
-  
-  const compatibilityScore = Math.floor(Math.random() * 41) + 60;
-  
-  res.json({
-    sign1,
-    sign2,
-    gnome1: GNOME_NAMES[sign1],
-    gnome2: GNOME_NAMES[sign2],
-    compatibilityScore,
-    description: 'Прекрасная совместимость в любви и дружбе.',
-    advice: 'Цените друг друга и не забывайте о романтике!',
-    timestamp: new Date().toISOString()
-  });
 });
 
 app.get('/api/day-card', (req, res) => {
-  const cards = [
-    { name: 'Маг', meaning: 'Новые возможности и творческая энергия', advice: 'Используйте свои таланты' },
-    { name: 'Верховная Жрица', meaning: 'Интуиция и скрытые знания', advice: 'Доверьтесь внутреннему голосу' },
-    { name: 'Солнце', meaning: 'Радость, успех и жизненная энергия', advice: 'Наслаждайтесь моментом' }
-  ];
-  
-  const todayCard = cards[Math.floor(Math.random() * cards.length)];
-  
-  res.json({
-    card: todayCard,
-    date: new Date().toLocaleDateString('ru-RU'),
-    type: 'daily_guidance',
-    gnomeWisdom: 'Древние гномы говорят: карты никогда не ошибаются.',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    const cards = [
+      { 
+        name: 'Маг', 
+        meaning: 'Новые возможности и творческая энергия', 
+        advice: 'Используйте свои таланты на полную мощность',
+        element: 'Воздух',
+        energy: 'positive'
+      },
+      { 
+        name: 'Верховная Жрица', 
+        meaning: 'Интуиция и скрытые знания', 
+        advice: 'Доверьтесь внутреннему голосу и мудрости',
+        element: 'Вода',
+        energy: 'mystical'
+      },
+      { 
+        name: 'Солнце', 
+        meaning: 'Радость, успех и жизненная энергия', 
+        advice: 'Наслаждайтесь моментом и дарите радость другим',
+        element: 'Огонь',
+        energy: 'positive'
+      },
+      { 
+        name: 'Луна', 
+        meaning: 'Подсознание и скрытые эмоции', 
+        advice: 'Обратитесь к своим глубинным чувствам',
+        element: 'Вода',
+        energy: 'reflective'
+      },
+      { 
+        name: 'Звезда', 
+        meaning: 'Надежда и духовное руководство', 
+        advice: 'Следуйте своей мечте, звезды укажут путь',
+        element: 'Воздух',
+        energy: 'inspiring'
+      }
+    ];
+    
+    const todayCard = cards[Math.floor(Math.random() * cards.length)];
+    
+    res.json({
+      card: todayCard,
+      date: new Date().toLocaleDateString('ru-RU'),
+      type: 'daily_guidance',
+      gnomeWisdom: 'Древние гномы говорят: карты никогда не ошибаются, если сердце открыто для мудрости.',
+      reflection: 'Подумайте о том, как это послание применимо к вашему текущему жизненному периоду.',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/day-card:', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить карту дня',
+      message: error.message
+    });
+  }
 });
 
 app.get('/api/mercury', (req, res) => {
-  const isRetrograde = Math.random() > 0.7;
-  
-  res.json({
-    isRetrograde,
-    status: isRetrograde ? 'Ретроградный' : 'Директный',
-    influence: isRetrograde ? 'Осторожность в коммуникациях' : 'Благоприятное время для общения',
-    advice: isRetrograde 
-      ? 'Проверяйте документы дважды'
-      : 'Отличное время для переговоров',
+  try {
+    const isRetrograde = Math.random() > 0.7; // 30% вероятность
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + (isRetrograde ? 21 : 45));
+    
+    res.json({
+      isRetrograde,
+      status: isRetrograde ? 'Ретроградный' : 'Директный',
+      influence: isRetrograde 
+        ? 'Осторожность в коммуникациях и технических вопросах' 
+        : 'Благоприятное время для общения и новых контрактов',
+      advice: isRetrograde 
+        ? 'Проверяйте документы дважды, избегайте важных покупок техники'
+        : 'Отличное время для переговоров, подписания договоров и обучения',
+      duration: isRetrograde ? '21 день' : 'До следующего ретрограда',
+      period: {
+        start: startDate.toLocaleDateString('ru-RU'),
+        end: endDate.toLocaleDateString('ru-RU')
+      },
+      affectedSigns: ['Близнецы', 'Дева', 'Весы'],
+      recommendations: isRetrograde ? [
+        'Делайте резервные копии важных данных',
+        'Перепроверяйте расписание встреч',
+        'Будьте терпеливы с техникой'
+      ] : [
+        'Планируйте важные переговоры',
+        'Изучайте новые навыки',
+        'Налаживайте деловые связи'
+      ],
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/mercury:', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить статус Меркурия',
+      message: error.message
+    });
+  }
+});
+
+// Обработка 404 для API
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    error: 'API endpoint не найден',
+    path: req.path,
+    availableEndpoints: [
+      'GET /',
+      'GET /api/horoscope?sign=знак',
+      'GET /api/horoscope/:sign',
+      'GET /api/moon',
+      'GET /api/astro-events',
+      'POST /api/numerology',
+      'GET /api/compatibility/:sign1/:sign2',
+      'GET /api/day-card',
+      'GET /api/mercury'
+    ],
     timestamp: new Date().toISOString()
   });
 });
 
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
-    error: 'API endpoint не найден',
-    path: req.path
-  });
-});
-
+// Общий обработчик ошибок
 app.use((error, req, res, next) => {
-  console.error('Серверная ошибка:', error);
+  console.error('💥 Серверная ошибка:', error);
   res.status(500).json({
     error: 'Внутренняя ошибка сервера',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Что-то пошло не так'
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Что-то пошло не так',
+    timestamp: new Date().toISOString()
   });
 });
 
+// Запуск сервера
 app.listen(PORT, () => {
-  console.log(`🧙‍♂️ Сервер запущен на порту ${PORT}`);
+  console.log(`🧙‍♂️ Сервер "Гномий Гороскоп" запущен на порту ${PORT}`);
+  console.log(`🔗 URL: https://d-gnome-horoscope-miniapp-frontend.onrender.com`);
   console.log('✅ CORS исправлен - cache-control разрешен');
   console.log('📱 Готов к приему запросов от Vercel');
+  console.log('🔧 Поддерживаются оба формата API для гороскопов');
+  console.log('⏰ Время запуска:', new Date().toLocaleString('ru-RU'));
 });
 
+// Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🛑 Завершаем сервер...');
+  console.log('🛑 Получен сигнал SIGTERM, завершаем сервер...');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 Завершаем сервер...');
+  console.log('🛑 Получен сигнал SIGINT, завершаем сервер...');
   process.exit(0);
 });
