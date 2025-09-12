@@ -9,9 +9,10 @@ const allowedOrigins = [
   'https://gnome-horoscope-react.vercel.app',
   'https://gnome-horoscope.vercel.app',
   'https://web.telegram.org',
-  'https://telegram.org',
+ 'https://telegram.org',
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
   'http://127.0.0.1:3000'
 ];
 
@@ -689,10 +690,10 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🧙‍♂️ Сервер "Гномий Гороскоп" запущен на порту ${PORT}`);
   console.log(`🔗 URL: https://d-gnome-horoscope-miniapp-frontend.onrender.com`);
-  console.log('✅ CORS исправлен - cache-control разрешен');
+  console.log('✅ CORS исправлен - добавлен localhost:3002');
   console.log('📱 Готов к приему запросов от Vercel');
   console.log('🔧 Поддерживаются оба формата API для гороскопов');
-  console.log('⏰ Время запуска:', new Date().toLocaleString('ru-RU'));
+ console.log('⏰ Время запуска:', new Date().toLocaleString('ru-RU'));
 });
 
 // Graceful shutdown
