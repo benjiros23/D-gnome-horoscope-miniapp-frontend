@@ -573,6 +573,86 @@ app.get('/api/mercury', (req, res) => {
   }
 });
 
+// Endpoint для работы с настройками пользователя
+app.get('/api/user/settings', (req, res) => {
+  try {
+    const initData = req.query.init_data;
+    console.log('Запрос настроек пользователя:', initData);
+    
+    if (!initData) {
+      return res.status(400).json({ 
+        error: 'Требуется параметр init_data',
+        example: '/api/user/settings?init_data=initDataString'
+      });
+    }
+    
+    // Возвращаем стандартные настройки для тестирования
+    // В реальном приложении здесь должна быть логика получения настроек из базы данных
+    const defaultSettings = {
+      zodiac_sign: null,
+      birth_time: null,
+      birth_location: null,
+      notification_time: '09:00',
+      premium: false,
+      language: 'ru',
+      theme: 'light'
+    };
+    
+    res.json({
+      ...defaultSettings,
+      init_data: initData,
+      source: 'default_settings',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/user/settings (GET):', error);
+    res.status(500).json({ 
+      error: 'Не удалось получить настройки пользователя',
+      message: error.message
+    });
+  }
+});
+
+// Endpoint для сохранения настроек пользователя
+app.post('/api/user/settings', (req, res) => {
+  try {
+    const { settings, initData } = req.body;
+    console.log('Сохранение настроек пользователя:', { settings, initData });
+    
+    if (!initData) {
+      return res.status(400).json({ 
+        error: 'Требуется параметр init_data',
+        example: '{ settings: {...}, initData: "initDataString" }'
+      });
+    }
+    
+    if (!settings) {
+      return res.status(400).json({ 
+        error: 'Требуется параметр settings',
+        example: '{ settings: {...}, initData: "initDataString" }'
+      });
+    }
+    
+    // В реальном приложении здесь должна быть логика сохранения настроек в базу данных
+    // Для тестирования просто возвращаем успешный результат
+    
+    res.json({
+      status: 'success',
+      message: 'Настройки пользователя сохранены',
+      settings: { ...settings, init_data: initData },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Ошибка /api/user/settings (POST):', error);
+    res.status(500).json({ 
+      error: 'Не удалось сохранить настройки пользователя',
+      message: error.message
+    });
+  }
+});
+
 // Обработка 404 для API
 app.use('/api/*', (req, res) => {
   res.status(404).json({
@@ -587,7 +667,9 @@ app.use('/api/*', (req, res) => {
       'POST /api/numerology',
       'GET /api/compatibility/:sign1/:sign2',
       'GET /api/day-card',
-      'GET /api/mercury'
+      'GET /api/mercury',
+      'GET /api/user/settings',
+      'POST /api/user/settings'
     ],
     timestamp: new Date().toISOString()
   });

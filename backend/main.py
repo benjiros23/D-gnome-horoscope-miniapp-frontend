@@ -254,10 +254,59 @@ def generate_premium_horoscope(sign: str, birth_time: Optional[str] = None, loca
 
 # API ENDPOINTS
 
+@app.get("/")
+async def root():
+    """Корневой эндпоинт - информация об API"""
+    return {
+        "name": "🧙‍♂️ Gnome Horoscope API",
+        "version": "2.0.0 Enhanced",
+        "server": "FastAPI (Python)",
+        "description": "Enhanced backend with personalization, push notifications, social features, premium functions, and analytics",
+        "endpoints": {
+            "basic": [
+                "GET /health - Health check",
+                "GET /api/horoscope?sign=<sign> - Get horoscope",
+                "POST /api/day-card - Get daily card",
+                "POST /api/favorites - Add to favorites",
+                "GET /api/favorites - Get favorites"
+            ],
+            "enhanced": [
+                "POST /api/user/settings - Save user settings",
+                "GET /api/user/settings - Get user settings", 
+                "POST /api/horoscope/premium - Premium horoscope",
+                "POST /api/share - Share content",
+                "GET /api/shared/{id} - Get shared content",
+                "GET /api/analytics/user - User analytics"
+            ]
+        },
+        "features": [
+            "🎯 Personalization - user settings & preferences",
+            "📱 Push Notifications - daily horoscopes",
+            "🌐 Social Sharing - share horoscopes & cards", 
+            "💎 Premium Functions - extended horoscopes",
+            "📊 Analytics - usage statistics",
+            "🔮 Real Data - external API integration"
+        ],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 @app.get("/health")
 async def health():
     """Проверка работоспособности API"""
-    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {
+        "status": "ok", 
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": "2.0.0",
+        "server": "FastAPI",
+        "features": [
+            "personalization",
+            "push_notifications", 
+            "social_sharing",
+            "premium_horoscopes",
+            "analytics",
+            "real_data"
+        ]
+    }
 
 @app.get("/api/horoscope")
 async def get_horoscope(sign: str, date: Optional[str] = None, user_id: Optional[int] = None):
@@ -711,10 +760,32 @@ async def send_daily_horoscopes():
 # Для деплоя на Render и локального запуска
 if __name__ == "__main__":
     import uvicorn
+    
+    # Настройки для production/development
+    host = "0.0.0.0"
     port = int(os.environ.get("PORT", 8000))
+    
     print("🚀 Запуск Gnome Horoscope API v2.0...")
     print(f"📡 CORS для: {FRONTEND_URL}")
     print(f"💾 База данных: database.db (в текущей папке)")
     print("✨ Новые функции: Персонализация, Push-уведомления, Соцсети, Премиум, Аналитика")
     print("🔮 Актуальные данные гороскопов через внешние API")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print(f"🌐 Запуск на {host}:{port}")
+    
+    # Инициализируем БД при старте
+    print("📊 Инициализация базы данных...")
+    try:
+        conn = get_db()
+        conn.close()
+        print("✅ База данных готова")
+    except Exception as e:
+        print(f"❌ Ошибка инициализации БД: {e}")
+    
+    # Запускаем сервер
+    uvicorn.run(
+        app, 
+        host=host, 
+        port=port,
+        log_level="info",
+        access_log=True
+    )
