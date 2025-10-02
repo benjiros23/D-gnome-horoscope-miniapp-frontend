@@ -1,5 +1,129 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const fetch = require('node-fetch');
+const axios = require('axios');
+const cheerio = require('cheerio');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.use(helmet());
+app.use(compression());
+app.use(express.json({ limit: '1mb' }));
+
+// CORS: allow frontend host + localhost for dev
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'https://d-gnome-horoscope-miniapp-frontend.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173'
+];
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) return cb(null, true);
+    return cb(new Error('CORS not allowed'), false);
+  }
+}));
+
+// Simple status
+app.get('/', (req, res) => {
+  res.json({ message: '🧙‍♂️ API Гномий Гороскоп работает!', version: '2.1.0', status: 'active', cors_fixed: true, timestamp: new Date().toISOString(), endpoints: [
+    'GET /api/horoscope/:sign - Гороскоп по знаку',
+    'GET /api/moon - Лунный календарь',
+    'GET /api/astro-events - Астрособытия',
+    'POST /api/genai - Proxy for Google Generative API',
+    'GET /api/day-card - Карта дня'
+  ]});
+});
+
+// Proxy endpoint for Google Generative API
+app.post('/api/genai', async (req, res) => {
+  try {
+    const API_KEY = process.env.GOOGLE_API_KEY;
+    if (!API_KEY) return res.status(500).json({ error: 'GOOGLE_API_KEY not configured on server' });
+
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    const json = await resp.json();
+    res.status(resp.status).json(json);
+  } catch (err) {
+    console.error('GenAI proxy error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// In-memory cache for moon data (simple TTL)
+let moonCache = { ts: 0, data: null };
+const MOON_TTL = 1000 * 60 * 15; // 15 minutes
+
+// Scrape moon data from my-calend.ru
+app.get('/api/moon', async (req, res) => {
+  try {
+    const now = Date.now();
+    if (moonCache.data && (now - moonCache.ts) < MOON_TTL) {
+      return res.json({ cached: true, data: moonCache.data });
+    }
+
+    const url = 'https://my-calend.ru/moon';
+    const r = await axios.get(url, { headers: { 'User-Agent': 'GnomeHoroscope/1.0 (+https://example.com)' } });
+    const $ = cheerio.load(r.data);
+
+    // This scraping is best-effort — page structure may change. Extract some useful bits.
+    const phases = [];
+    $('.moon-phase__item, .moon__item').each((i, el) => {
+      const title = $(el).find('h3').text().trim() || $(el).find('.title').text().trim();
+      const text = $(el).find('p').text().trim() || $(el).find('.description').text().trim();
+      if (title || text) phases.push({ title, text });
+    });
+
+    // Fallback simpler parse: get main info block
+    const main = $('main').text().replace(/\s+/g, ' ').trim().slice(0, 2000);
+
+    const data = { phases, main };
+    moonCache = { ts: now, data };
+    res.json({ cached: false, data });
+  } catch (err) {
+    console.error('Moon fetch error:', err.toString());
+    res.status(500).json({ error: 'Не удалось получить данные луны', details: String(err) });
+  }
+});
+
+// Placeholder endpoints (you can replace with your own logic or connect to DB)
+app.get('/api/horoscope/:sign', (req, res) => {
+  const sign = req.params.sign;
+  res.json({ sign, horoscope: { general: `Гном говорит: гороскоп для ${sign}`, love: '', work: '', health: '' } });
+});
+
+app.get('/api/day-card', (req, res) => {
+  res.json({ card: 'Колесо фортуны', meaning: 'Вас ждёт перемена' });
+});
+
+app.get('/api/astro-events', (req, res) => {
+  res.json({ events: [] });
+});
+
+// 404
+app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+
+app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
 import express from 'express';
 import cors from 'cors';
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -14,6 +138,7 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:3002',
   'http://127.0.0.1:3000'
+  , 'https://d-gnome-horoscope-miniapp-frontend.onrender.com'
 ];
 
 const corsOptions = {
@@ -571,6 +696,39 @@ app.get('/api/mercury', (req, res) => {
       error: 'Не удалось получить статус Меркурия',
       message: error.message
     });
+  }
+});
+
+// Proxy endpoint for Google Generative Language (GenAI) to keep API key on server
+app.post('/api/genai', async (req, res) => {
+  try {
+    const API_KEY = process.env.GOOGLE_API_KEY;
+    if (!API_KEY) {
+      return res.status(500).json({ error: 'GOOGLE_API_KEY not configured on server' });
+    }
+
+    const googleUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+    const response = await fetch(googleUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    const data = await response.text();
+    // Try to parse JSON, otherwise return raw text
+    try {
+      const json = JSON.parse(data);
+      return res.status(response.status).json(json);
+    } catch (e) {
+      return res.status(response.status).send(data);
+    }
+  } catch (err) {
+    console.error('GenAI proxy error:', err);
+    return res.status(500).json({ error: String(err) });
   }
 });
 
